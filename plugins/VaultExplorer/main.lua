@@ -1,4 +1,5 @@
 local CONFIG_FILE_NAME = "vault-explorer.conf"
+local PATH_SEPARATOR = package.config:sub(1, 1)
 local MIN_DEPTH = 0
 local DEFAULT_MAX_DEPTH = 4
 local MAX_DEPTH_LIMIT = 16
@@ -31,21 +32,16 @@ local function trim(value)
   return (value:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
-local function path_separator()
-  return package.config:sub(1, 1)
-end
-
 local function normalize_path(path)
   if not path or path == "" then
     return ""
   end
 
-  local sep = path_separator()
-  local pattern = sep == "\\" and "[\\/]+" or sep .. "+"
-  path = path:gsub(pattern, sep)
+  local pattern = PATH_SEPARATOR == "\\" and "[\\/]+" or PATH_SEPARATOR .. "+"
+  path = path:gsub(pattern, PATH_SEPARATOR)
 
-  if #path > 1 and path:sub(-1) == sep then
-    if not (sep == "\\" and path:match("^%a:[\\/]$")) and path ~= sep then
+  if #path > 1 and path:sub(-1) == PATH_SEPARATOR then
+    if not (PATH_SEPARATOR == "\\" and path:match("^%a:[\\/]$")) and path ~= PATH_SEPARATOR then
       path = path:sub(1, -2)
     end
   end
@@ -58,24 +54,22 @@ local function join_path(base, child)
     return child
   end
 
-  local sep = path_separator()
-  if base:sub(-1) == sep then
+  if base:sub(-1) == PATH_SEPARATOR then
     return base .. child
   end
 
-  return base .. sep .. child
+  return base .. PATH_SEPARATOR .. child
 end
 
 local function basename(path)
   path = normalize_path(path)
-  local sep = path_separator()
-  return path:match("[^" .. sep .. "]+$") or path
+  return path:match("[^" .. PATH_SEPARATOR .. "]+$") or path
 end
 
 local function parent_dir(path)
   path = normalize_path(path)
-  local sep = path_separator()
-  local pattern = "^(.*)" .. (sep == "\\" and "[\\/]" or sep) .. "[^" .. (sep == "\\" and "\\/" or sep) .. "]+$"
+  local pattern = "^(.*)" .. (PATH_SEPARATOR == "\\" and "[\\/]" or PATH_SEPARATOR) .. "[^" ..
+      (PATH_SEPARATOR == "\\" and "\\/" or PATH_SEPARATOR) .. "]+$"
   local parent = path:match(pattern)
   if not parent or parent == "" then
     return ""
@@ -656,9 +650,11 @@ local function show_browser_dialog()
 
     local parts = { state.rootLabel }
     local parent = parent_dir(node.path)
-    while parent ~= "" and parent ~= state.config.root do
+    local guard = 0
+    while parent ~= "" and parent ~= state.config.root and guard < MAX_DEPTH_LIMIT + 2 do
       table.insert(parts, 2, basename(parent))
       parent = parent_dir(parent)
+      guard = guard + 1
     end
     if node.path ~= state.config.root then
       table.insert(parts, basename(node.path))
