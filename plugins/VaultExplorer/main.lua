@@ -1,6 +1,9 @@
 local CONFIG_FILE_NAME = "vault-explorer.conf"
+local MIN_DEPTH = 0
 local DEFAULT_MAX_DEPTH = 4
 local MAX_DEPTH_LIMIT = 16
+local MAX_RESULT_DISPLAY_LIMIT = 200
+local NO_CURRENT_DOCUMENT_MESSAGE = "No open .xopp or PDF document is available."
 
 local state = {
   config = {
@@ -174,7 +177,7 @@ local function load_config()
       elseif key == "maxDepth" then
         local maxDepth = tonumber(trim(value))
         if maxDepth then
-          state.config.maxDepth = math.max(0, math.min(MAX_DEPTH_LIMIT, math.floor(maxDepth)))
+          state.config.maxDepth = math.max(MIN_DEPTH, math.min(MAX_DEPTH_LIMIT, math.floor(maxDepth)))
         end
       end
     end
@@ -509,7 +512,7 @@ local function show_quick_open_dialog()
     clear_container(listbox)
 
     local results = create_search_results(search.text)
-    local limit = math.min(#results, 200)
+    local limit = math.min(#results, MAX_RESULT_DISPLAY_LIMIT)
     if limit == 0 then
       local empty = Gtk.Label({
         label = "No matching notes.",
@@ -827,7 +830,7 @@ local function show_settings_dialog()
   currentButton.on_clicked = function()
     local folder = current_document_folder()
     if not folder then
-      show_message("No open .xopp or PDF document is available.", true)
+      show_message(NO_CURRENT_DOCUMENT_MESSAGE, true)
       return
     end
     rootEntry.text = folder
@@ -836,7 +839,7 @@ local function show_settings_dialog()
   dialog:show_all()
   local response = dialog:run()
   local selectedRoot = normalize_path(rootEntry.text or "")
-  local selectedDepth = math.max(0, math.min(MAX_DEPTH_LIMIT, depthSpin:get_value_as_int()))
+  local selectedDepth = math.max(MIN_DEPTH, math.min(MAX_DEPTH_LIMIT, depthSpin:get_value_as_int()))
   dialog:destroy()
 
   if response ~= Gtk.ResponseType.OK then
@@ -953,7 +956,7 @@ end
 function UseCurrentDocumentFolder()
   local folder = current_document_folder()
   if not folder then
-    show_message("No open .xopp or PDF document is available.", true)
+    show_message(NO_CURRENT_DOCUMENT_MESSAGE, true)
     return
   end
 
