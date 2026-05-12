@@ -506,6 +506,9 @@ static int applib_openDialog(lua_State* L) {
  * registers a menupoint with name "HelloWorld" executing a function named "printMessage", in mode 1,
  * which can be triggered via the "<Control>a" keyboard accelerator
  *
+ * Example 1b: app.registerUi({["menu"] = "School/Biology/Cell_Structure", callback="openCellStructure"})
+ * registers nested submenus where each "/" creates another submenu level.
+ *
  * Example 2: app.registerUi({callback ="blueDashedPen", toolbarId="CUSTOM_PEN_1", iconName="bluePenIcon"})
  * registers a toolbar icon named "bluePenIcon" executing a function named "blueDashedPen", which can be added
  * to a toolbar via toolbar customization or by editing the toolbar.ini file using the name "Plugin::CUSTOM_PEN_1"
