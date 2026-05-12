@@ -41,26 +41,38 @@ extern "C" {
 constexpr std::array loadedlibs{luaL_Reg{"app", luaopen_app}};
 
 namespace {
-auto splitMenuPath(const std::string& menuPath) -> std::vector<std::string> {
+struct ParsedMenuPath final {
+    std::vector<std::string> components;
+    bool containsEmptyComponent = false;
+};
+
+auto splitMenuPath(const std::string& menuPath) -> ParsedMenuPath {
     std::vector<std::string> components;
     std::string component;
+    bool sawSeparator = false;
 
     for (char c: menuPath) {
         if (c == '/') {
             if (!component.empty()) {
                 components.emplace_back(std::move(component));
                 component.clear();
+            } else if (sawSeparator || components.empty()) {
+                return {std::move(components), true};
             }
+            sawSeparator = true;
             continue;
         }
+        sawSeparator = false;
         component.push_back(c);
     }
 
     if (!component.empty()) {
         components.emplace_back(std::move(component));
+    } else if (sawSeparator) {
+        return {std::move(components), true};
     }
 
-    return components;
+    return {std::move(components), false};
 }
 }  // namespace
 
@@ -121,9 +133,13 @@ size_t Plugin::populateMenuSection(GtkApplicationWindow* win, size_t startId) {
         m.action.reset(g_simple_action_new(actionName.c_str(), nullptr), xoj::util::adopt);
 
         actionName = "win." + actionName;
-        auto menuPath = splitMenuPath(m.label);
-        if (menuPath.empty()) {
+        auto parsedMenuPath = splitMenuPath(m.label);
+        auto& menuPath = parsedMenuPath.components;
+        if (parsedMenuPath.containsEmptyComponent) {
+            menuPath.clear();
             menuPath.emplace_back(m.label);
+        } else if (menuPath.empty()) {
+            continue;
         }
 
         GMenu* currentMenu = menuSection.get();
