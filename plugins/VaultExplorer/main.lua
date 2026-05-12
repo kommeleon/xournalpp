@@ -4,6 +4,7 @@ local MIN_DEPTH = 0
 local DEFAULT_MAX_DEPTH = 4
 local MAX_DEPTH_LIMIT = 16
 local MAX_RESULT_DISPLAY_LIMIT = 200
+local BREADCRUMB_GUARD_MARGIN = 2
 local NO_CURRENT_DOCUMENT_MESSAGE = "No open .xopp or PDF document is available."
 
 local state = {
@@ -68,8 +69,9 @@ end
 
 local function parent_dir(path)
   path = normalize_path(path)
-  local pattern = "^(.*)" .. (PATH_SEPARATOR == "\\" and "[\\/]" or PATH_SEPARATOR) .. "[^" ..
-      (PATH_SEPARATOR == "\\" and "\\/" or PATH_SEPARATOR) .. "]+$"
+  local parentSeparatorPattern = PATH_SEPARATOR == "\\" and "[\\/]" or PATH_SEPARATOR
+  local childExclusionPattern = PATH_SEPARATOR == "\\" and "\\/" or PATH_SEPARATOR
+  local pattern = "^(.*)" .. parentSeparatorPattern .. "[^" .. childExclusionPattern .. "]+$"
   local parent = path:match(pattern)
   if not parent or parent == "" then
     return ""
@@ -651,7 +653,7 @@ local function show_browser_dialog()
     local parts = { state.rootLabel }
     local parent = parent_dir(node.path)
     local guard = 0
-    while parent ~= "" and parent ~= state.config.root and guard < MAX_DEPTH_LIMIT + 2 do
+    while parent ~= "" and parent ~= state.config.root and guard < MAX_DEPTH_LIMIT + BREADCRUMB_GUARD_MARGIN do
       table.insert(parts, 2, basename(parent))
       parent = parent_dir(parent)
       guard = guard + 1
