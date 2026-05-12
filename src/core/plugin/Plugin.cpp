@@ -15,7 +15,9 @@
 
 #ifdef ENABLE_PLUGINS
 
+#include <unordered_map>
 #include <utility>  // for move, pair
+#include <vector>
 
 #include "gui/toolbarMenubar/PluginPlaceholderLabel.h"  // for the PlaceholderLabel Plugin
 #include "gui/toolbarMenubar/ToolMenuHandler.h"         // for ToolMenuHandler
@@ -37,6 +39,30 @@ extern "C" {
  ** program
  */
 constexpr std::array loadedlibs{luaL_Reg{"app", luaopen_app}};
+
+namespace {
+auto splitMenuPath(const std::string& menuPath) -> std::vector<std::string> {
+    std::vector<std::string> components;
+    std::string component;
+
+    for (char c: menuPath) {
+        if (c == '/') {
+            if (!component.empty()) {
+                components.emplace_back(std::move(component));
+                component.clear();
+            }
+            continue;
+        }
+        component.push_back(c);
+    }
+
+    if (!component.empty()) {
+        components.emplace_back(std::move(component));
+    }
+
+    return components;
+}
+}  // namespace
 
 Plugin::Plugin(Control* control, std::string name, fs::path path):
         control(control), name(std::move(name)), path(std::move(path)) {
@@ -87,6 +113,7 @@ size_t Plugin::populateMenuSection(GtkApplicationWindow* win, size_t startId) {
     xoj_assert(!menuSection);
 
     this->menuSection.reset(g_menu_new(), xoj::util::adopt);
+    std::unordered_map<std::string, xoj::util::GObjectSPtr<GMenu>> submenus;
 
     for (auto& m: menuEntries) {
         std::string actionName = G_ACTION_NAME_PREFIX;
@@ -94,9 +121,37 @@ size_t Plugin::populateMenuSection(GtkApplicationWindow* win, size_t startId) {
         m.action.reset(g_simple_action_new(actionName.c_str(), nullptr), xoj::util::adopt);
 
         actionName = "win." + actionName;
-        xoj::util::GObjectSPtr<GMenuItem> entry(g_menu_item_new(m.label.c_str(), actionName.c_str()), xoj::util::adopt);
+        auto menuPath = splitMenuPath(m.label);
+        if (menuPath.empty()) {
+            menuPath.emplace_back(m.label);
+        }
 
-        g_menu_append_item(menuSection.get(), entry.get());
+        GMenu* currentMenu = menuSection.get();
+        std::string currentPath;
+        for (size_t i = 0; i + 1 < menuPath.size(); ++i) {
+            if (!currentPath.empty()) {
+                currentPath.push_back('/');
+            }
+            currentPath += menuPath[i];
+
+            auto submenuIt = submenus.find(currentPath);
+            if (submenuIt == submenus.end()) {
+                auto [it, inserted] = submenus.emplace(
+                        currentPath, xoj::util::GObjectSPtr<GMenu>(g_menu_new(), xoj::util::adopt));
+                xoj_assert(inserted);
+                xoj::util::GObjectSPtr<GMenuItem> submenuItem(
+                        g_menu_item_new_submenu(menuPath[i].c_str(), G_MENU_MODEL(it->second.get())), xoj::util::adopt);
+                g_menu_append_item(currentMenu, submenuItem.get());
+                currentMenu = it->second.get();
+                continue;
+            }
+
+            currentMenu = submenuIt->second.get();
+        }
+
+        xoj::util::GObjectSPtr<GMenuItem> entry(g_menu_item_new(menuPath.back().c_str(), actionName.c_str()),
+                                                xoj::util::adopt);
+        g_menu_append_item(currentMenu, entry.get());
 
         // This might fail, when the vector reallocates, but then the order of initialisation is violated
         g_signal_connect(

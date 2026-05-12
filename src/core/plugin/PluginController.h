@@ -35,7 +35,7 @@ public:
     void registerToolbar();
 
     /**
-     * @brief Create menu entries (one submenu per enabled plugin with menu entries)
+     * @brief Create menu sections for enabled plugins with menu entries
      * The data is owned by the Plugin's themselves - do not unref the GMenuModel*
      */
     std::vector<std::pair<std::string, GMenuModel*>> createMenuSections(GtkApplicationWindow* win);
