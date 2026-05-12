@@ -391,7 +391,7 @@ local function build_result_row(entry)
   local Pango = gui.Pango
 
   local title = Gtk.Label({
-    label = "📄 " .. entry.name,
+    label = entry.name,
     xalign = 0,
     hexpand = true,
   })
@@ -477,7 +477,7 @@ local function show_quick_open_dialog()
   content.margin_end = 8
 
   local hint = Gtk.Label({
-    label = "Search .xopp and .pdf files. Press Enter to open the selected result.",
+    label = "Search .xopp and .pdf files. Press Enter or click a result to open it.",
     xalign = 0,
   })
 
@@ -575,7 +575,7 @@ end
 
 local function build_browser_row(item)
   local Gtk = gui.Gtk
-  local label = item.kind == "directory" and ("📁 " .. item.node.name) or ("📄 " .. item.file.name)
+  local label = item.kind == "directory" and (item.node.name .. "/") or item.file.name
   local row = Gtk.ListBoxRow()
   row:add(Gtk.Label({
     label = label,
@@ -750,8 +750,9 @@ local function show_settings_dialog()
   content.margin_end = 8
 
   local rootLabel = Gtk.Label({
-    label = "Notebook root",
+    label = "Notebook _root",
     xalign = 0,
+    use_underline = true,
   })
   local rootEntry = Gtk.Entry({
     text = state.config.root or "",
@@ -760,8 +761,9 @@ local function show_settings_dialog()
   local browseButton = Gtk.Button({ label = "Browse…" })
   local currentButton = Gtk.Button({ label = "Use current document folder" })
   local depthLabel = Gtk.Label({
-    label = "Maximum depth",
+    label = "Maximum _depth",
     xalign = 0,
+    use_underline = true,
   })
   local depthSpin = Gtk.SpinButton({
     adjustment = Gtk.Adjustment({
@@ -786,6 +788,8 @@ local function show_settings_dialog()
     orientation = Gtk.Orientation.HORIZONTAL,
     spacing = 6,
   })
+  rootLabel.mnemonic_widget = rootEntry
+  depthLabel.mnemonic_widget = depthSpin
   rootBox:pack_start(rootEntry, true, true, 0)
   rootBox:pack_start(browseButton, false, false, 0)
 
@@ -878,10 +882,10 @@ end
 
 local function register_tree_menu(node, prefix)
   for _, directory in ipairs(node.directories) do
-    register_tree_menu(directory, prefix .. "/📁 " .. directory.name)
+    register_tree_menu(directory, prefix .. "/" .. directory.name)
   end
   for _, fileEntry in ipairs(node.files) do
-    register_file_menu(prefix .. "/📄 " .. fileEntry.name, fileEntry)
+    register_file_menu(prefix .. "/" .. fileEntry.name, fileEntry)
   end
 end
 
@@ -890,24 +894,24 @@ rebuild_index()
 
 function initUi()
   app.registerUi({
-    menu = "⚡ Quick Open…",
+    menu = "Quick Open…",
     callback = "ShowQuickOpen",
-    accelerator = "<Control><Shift>o",
+    accelerator = "<Control><Shift>O",
   })
   app.registerUi({
-    menu = "🗂 Browse Notebook…",
+    menu = "Browse Notebook…",
     callback = "ShowBrowser",
   })
   app.registerUi({
-    menu = "🔄 Refresh Index",
+    menu = "Refresh Index",
     callback = "RefreshIndex",
   })
   app.registerUi({
-    menu = "⚙ Settings…",
+    menu = "Settings…",
     callback = "ShowSettings",
   })
   app.registerUi({
-    menu = "📍 Use Current Document Folder as Root",
+    menu = "Use Current Document Folder as Root",
     callback = "UseCurrentDocumentFolder",
   })
 
